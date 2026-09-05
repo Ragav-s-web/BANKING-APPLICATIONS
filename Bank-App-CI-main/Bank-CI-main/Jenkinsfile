@@ -323,6 +323,19 @@ pipeline {
                             --password-stdin
 
                         echo "Docker Hub login successful."
+                        echo "=========================================="
+                        echo "PUSHING DOCKER IMAGE"
+                        echo "=========================================="
+    
+                        echo "Docker Image:"
+                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+    
+                        docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
+    
+                        echo ""
+                        echo "=========================================="
+                        echo "DOCKER PUSH COMPLETED"
+                        echo "=========================================="
                     '''
                 }
             }
@@ -330,32 +343,6 @@ pipeline {
 
         // =====================================================
         // 15. DOCKER PUSH
-        // =====================================================
-
-        stage('Docker Push') {
-
-            steps {
-
-                sh '''
-                    echo "=========================================="
-                    echo "PUSHING DOCKER IMAGE"
-                    echo "=========================================="
-
-                    echo "Docker Image:"
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                    docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                    echo ""
-                    echo "=========================================="
-                    echo "DOCKER PUSH COMPLETED"
-                    echo "=========================================="
-                '''
-            }
-        }
-
-        // =====================================================
-        // 16. DOCKER LOGOUT
         // =====================================================
 
         stage('Docker Logout') {
