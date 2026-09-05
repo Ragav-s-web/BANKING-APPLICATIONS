@@ -189,8 +189,7 @@ pipeline {
 
                             echo "SONAR CREDENTIAL BLOCK STARTED"
 
-                            sh '''
-                                echo "=========================================="
+                            sh echo "=========================================="
                                 echo "SONARQUBE ANALYSIS"
                                 echo "=========================================="
 
@@ -228,7 +227,6 @@ pipeline {
                                 echo "Checking report-task.txt..."
 
                                 find . -name "report-task.txt" -print
-                            '''
                         }
                     }
                 }
