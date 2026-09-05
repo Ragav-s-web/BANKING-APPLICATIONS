@@ -30,7 +30,7 @@ pipeline {
         SONARQUBE_CREDENTIALS = credentials('sonarqube-token')
 
         // Docker Hub
-        DOCKER_IMAGE = 'castromeka/gcbank'
+        DOCKER_IMAGE = 'ragavkumar/gcbank'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
 
@@ -330,7 +330,7 @@ pipeline {
                         echo "Docker Image:"
                         echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
     
-                        docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        docker push "${banking}:${DOCKER_IMAGE}:${IMAGE_TAG}"
     
                         echo ""
                         echo "=========================================="
