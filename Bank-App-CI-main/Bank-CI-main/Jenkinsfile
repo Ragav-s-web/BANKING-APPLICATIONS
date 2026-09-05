@@ -7,137 +7,64 @@ pipeline {
         maven 'Maven'
     }
 
-    environment {
-        GIT_REPO = 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
-
-        APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
-
-        DOCKER_IMAGE = 'castromeka/gcbank'
-        IMAGE_TAG = "v${BUILD_NUMBER}"
-    }
-
     stages {
 
-        // =========================================================
-        // 1. CLEAN WORKSPACE
-        // =========================================================
-
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
-
-        // =========================================================
-        // 2. CHECKOUT CODE
-        // =========================================================
-
-        stage('Git Checkout') {
+        stage('Checkout') {
             steps {
                 git branch: 'main',
                     credentialsId: 'git-token',
-                    url: "${GIT_REPO}"
+                    url: 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
             }
         }
-
-
-        // =========================================================
-        // 3. JAVA & MAVEN CHECK
-        // =========================================================
 
         stage('Check Java & Maven') {
             steps {
                 sh '''
-                    echo "======================================"
-                    echo "JAVA VERSION"
-                    echo "======================================"
-
-                    java -version
-
-                    echo ""
-                    echo "======================================"
-                    echo "JAVA LOCATION"
-                    echo "======================================"
-
-                    readlink -f $(which java)
-
-                    echo ""
-                    echo "======================================"
-                    echo "SETTING JAVA_HOME"
-                    echo "======================================"
-
-                    export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-
                     echo "JAVA_HOME=$JAVA_HOME"
-
-                    export PATH=$JAVA_HOME/bin:$PATH
-
-                    echo ""
-                    echo "======================================"
-                    echo "MAVEN VERSION"
-                    echo "======================================"
-
+                    java -version
+                    javac -version
                     mvn -version
                 '''
             }
         }
 
-
-        // =========================================================
-        // 4. COMPILE
-        // =========================================================
+        stage('Clean') {
+            steps {
+                dir('Bank-App-CI-main/Bank-CI-main') {
+                    sh 'mvn clean'
+                }
+            }
+        }
 
         stage('Compile') {
             steps {
-                dir("${APP_DIR}") {
-
-                    sh '''
-                        export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                        export PATH=$JAVA_HOME/bin:$PATH
-
-                        echo "JAVA_HOME=$JAVA_HOME"
-
-                        mvn clean compile
-                    '''
+                dir('Bank-App-CI-main/Bank-CI-main') {
+                    sh 'mvn compile'
                 }
             }
         }
-
-
-        // =========================================================
-        // 5. TEST
-        // =========================================================
 
         stage('Test') {
             steps {
-                dir("${APP_DIR}") {
-
-                    sh '''
-                        export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                        export PATH=$JAVA_HOME/bin:$PATH
-
-                        mvn test
-                    '''
+                dir('Bank-App-CI-main/Bank-CI-main') {
+                    sh 'mvn test'
                 }
             }
         }
 
-
-        // =========================================================
-        // 6. SONARQUBE
-        // =========================================================
+        stage('Package') {
+            steps {
+                dir('Bank-App-CI-main/Bank-CI-main') {
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
-                dir("${APP_DIR}") {
-
+                dir('Bank-App-CI-main/Bank-CI-main') {
                     withSonarQubeEnv('sonar') {
-
                         sh '''
-                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            export PATH=$JAVA_HOME/bin:$PATH
-
                             mvn sonar:sonar \
                             -Dsonar.projectKey=gcbank \
                             -Dsonar.projectName=gcbank \
@@ -148,143 +75,24 @@ pipeline {
             }
         }
 
-
-        // =========================================================
-        // 7. QUALITY GATE
-        // =========================================================
-
         stage('Quality Gate') {
             steps {
-
                 timeout(time: 5, unit: 'MINUTES') {
-
                     waitForQualityGate(
                         abortPipeline: false
                     )
                 }
             }
         }
-
-
-        // =========================================================
-        // 8. PACKAGE
-        // =========================================================
-
-        stage('Build Package') {
-            steps {
-                dir("${APP_DIR}") {
-
-                    sh '''
-                        export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                        export PATH=$JAVA_HOME/bin:$PATH
-
-                        mvn package -DskipTests
-                    '''
-                }
-            }
-        }
-
-
-        // =========================================================
-        // 9. DOCKER BUILD
-        // =========================================================
-
-        stage('Docker Build') {
-            steps {
-                dir("${APP_DIR}") {
-
-                    sh '''
-                        docker build \
-                        -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
-                    '''
-                }
-            }
-        }
-
-
-        // =========================================================
-        // 10. DOCKER IMAGE CHECK
-        // =========================================================
-
-        stage('Docker Image Check') {
-            steps {
-
-                sh '''
-                    echo "======================================"
-                    echo "DOCKER IMAGE"
-                    echo "======================================"
-
-                    docker images ${DOCKER_IMAGE}
-
-                    echo ""
-                    echo "IMAGE CREATED:"
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-                '''
-            }
-        }
-
-
-        // =========================================================
-        // 11. PUSH DOCKER IMAGE
-        // =========================================================
-
-        stage('Push Docker Image') {
-            steps {
-
-                script {
-
-                    withDockerRegistry(
-                        credentialsId: 'docker-cred'
-                    ) {
-
-                        sh '''
-                            docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-                        '''
-                    }
-                }
-            }
-        }
     }
 
-
-    // =============================================================
-    // POST ACTIONS
-    // =============================================================
-
     post {
-
         success {
-
-            echo '''
-            ==========================================
-                  BANKING APPLICATION PIPELINE
-                       SUCCESSFUL
-            ==========================================
-            '''
-
-            echo "Docker Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo 'BUILD SUCCESSFUL'
         }
-
 
         failure {
-
-            echo '''
-            ==========================================
-                  BANKING APPLICATION PIPELINE
-                         FAILED
-            ==========================================
-            '''
-
-            echo "Check the Jenkins Console Output."
-        }
-
-
-        always {
-
-            echo "=========================================="
-            echo "BUILD NUMBER: ${BUILD_NUMBER}"
-            echo "BUILD STATUS: ${currentBuild.currentResult}"
-            echo "=========================================="
+            echo 'BUILD FAILED'
         }
     }
 }
