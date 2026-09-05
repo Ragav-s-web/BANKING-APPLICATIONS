@@ -2,6 +2,10 @@ pipeline {
 
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     // =========================================================
     // TOOLS
     // =========================================================
@@ -45,7 +49,6 @@ pipeline {
             }
         }
 
-
         // =====================================================
         // 2. GIT CHECKOUT
         // =====================================================
@@ -53,14 +56,19 @@ pipeline {
         stage('Git Checkout') {
             steps {
 
+                echo "=========================================="
+                echo "GIT CHECKOUT"
+                echo "=========================================="
+
                 git(
                     branch: 'main',
                     credentialsId: 'git-token',
                     url: 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
                 )
+
+                echo "Git checkout completed."
             }
         }
-
 
         // =====================================================
         // 3. CHECK JAVA AND MAVEN
@@ -100,7 +108,6 @@ pipeline {
             }
         }
 
-
         // =====================================================
         // 4. MAVEN CLEAN
         // =====================================================
@@ -120,7 +127,6 @@ pipeline {
                 }
             }
         }
-
 
         // =====================================================
         // 5. COMPILE
@@ -142,7 +148,6 @@ pipeline {
             }
         }
 
-
         // =====================================================
         // 6. UNIT TEST
         // =====================================================
@@ -163,60 +168,84 @@ pipeline {
             }
         }
 
-
         // =====================================================
         // 7. SONARQUBE ANALYSIS
         // =====================================================
-stage('SonarQube Analysis') {
-    steps {
-        dir("${APP_DIR}") {
 
-            withSonarQubeEnv('sonar') {
+        stage('SonarQube Analysis') {
 
-                withCredentials([
-                    string(
-                        credentialsId: 'sonar-token',
-                        variable: 'SONAR_TOKEN'
-                    )
-                ]) {
+            steps {
 
-                    sh '''
-                        echo "=========================================="
-                        echo "SONARQUBE ANALYSIS"
-                        echo "=========================================="
+                dir("${APP_DIR}") {
 
-                        pwd
+                    withSonarQubeEnv('sonar') {
 
-                        echo "Maven version:"
-                        mvn -version
+                        withCredentials([
+                            string(
+                                credentialsId: 'sonar-token',
+                                variable: 'SONAR_TOKEN'
+                            )
+                        ]) {
 
-                        echo "SonarQube URL:"
-                        echo "$SONAR_HOST_URL"
+                            echo "SONAR CREDENTIAL BLOCK STARTED"
 
-                        echo "Starting SonarQube analysis..."
+                            sh '''
+                                echo "=========================================="
+                                echo "SONARQUBE ANALYSIS"
+                                echo "=========================================="
 
-                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
-                            -Dsonar.projectKey=gcbank \
-                            -Dsonar.projectName=gcbank \
-                            -Dsonar.host.url="$http://35.180.123.141:9000" \
-                            -Dsonar.token="$sqp_d31fea056adde226dae802cfad168c95f72d1bd6" \
-                            -Dsonar.java.binaries=target/classes
+                                echo "Current directory:"
+                                pwd
 
-                        echo "SONARQUBE COMPLETED"
+                                echo ""
+                                echo "Checking pom.xml:"
+                                ls -lh pom.xml
 
-                    '''
+                                echo ""
+                                echo "Maven version:"
+                                mvn -version
+
+                                echo ""
+                                echo "SonarQube URL:"
+                                echo "$SONAR_HOST_URL"
+
+                                echo ""
+                                echo "Starting SonarQube analysis..."
+
+                                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
+                                    -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+                                    -Dsonar.projectName="$SONAR_PROJECT_NAME" \
+                                    -Dsonar.host.url="$SONAR_HOST_URL" \
+                                    -Dsonar.token="$SONAR_TOKEN" \
+                                    -Dsonar.java.binaries=target/classes
+
+                                echo ""
+                                echo "=========================================="
+                                echo "SONARQUBE ANALYSIS COMPLETED"
+                                echo "=========================================="
+
+                                echo ""
+                                echo "Checking report-task.txt..."
+
+                                find . -name "report-task.txt" -print
+                            '''
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         // =====================================================
         // 8. QUALITY GATE
         // =====================================================
 
         stage('Quality Gate') {
+
             steps {
+
+                echo "=========================================="
+                echo "SONARQUBE QUALITY GATE"
+                echo "=========================================="
 
                 timeout(
                     time: 5,
@@ -230,12 +259,12 @@ stage('SonarQube Analysis') {
             }
         }
 
-
         // =====================================================
         // 9. CREATE JAR
         // =====================================================
 
         stage('Package') {
+
             steps {
 
                 dir("${APP_DIR}") {
@@ -251,12 +280,12 @@ stage('SonarQube Analysis') {
             }
         }
 
-
         // =====================================================
         // 10. SHOW BUILD ARTIFACT
         // =====================================================
 
         stage('Show Artifact') {
+
             steps {
 
                 dir("${APP_DIR}") {
@@ -267,17 +296,43 @@ stage('SonarQube Analysis') {
                         echo "=========================================="
 
                         ls -lh target/
+
+                        echo ""
+                        echo "JAR FILES:"
+                        find target -maxdepth 1 -type f -name "*.jar" -ls
                     '''
                 }
             }
         }
 
+        // =====================================================
+        // 11. DOCKER CHECK
+        // =====================================================
+
+        stage('Docker Check') {
+
+            steps {
+
+                sh '''
+                    echo "=========================================="
+                    echo "DOCKER CHECK"
+                    echo "=========================================="
+
+                    docker --version
+
+                    echo ""
+                    echo "Docker information:"
+                    docker info
+                '''
+            }
+        }
 
         // =====================================================
-        // 11. DOCKER BUILD
+        // 12. DOCKER BUILD
         // =====================================================
 
         stage('Docker Build') {
+
             steps {
 
                 dir("${APP_DIR}") {
@@ -287,22 +342,30 @@ stage('SonarQube Analysis') {
                         echo "BUILDING DOCKER IMAGE"
                         echo "=========================================="
 
-                        docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+                        echo "Docker image:"
+                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+
+                        docker build \
+                            -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
+                            .
 
                         echo ""
-                        echo "Docker image created:"
-                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        echo "=========================================="
+                        echo "DOCKER BUILD COMPLETED"
+                        echo "=========================================="
+
+                        docker images "${DOCKER_IMAGE}"
                     '''
                 }
             }
         }
 
-
         // =====================================================
-        // 12. DOCKER IMAGE CHECK
+        // 13. DOCKER IMAGE CHECK
         // =====================================================
 
         stage('Docker Image Check') {
+
             steps {
 
                 sh '''
@@ -310,21 +373,25 @@ stage('SonarQube Analysis') {
                     echo "DOCKER IMAGE CHECK"
                     echo "=========================================="
 
-                    docker images ${DOCKER_IMAGE}
+                    docker images "${DOCKER_IMAGE}"
 
                     echo ""
-                    echo "IMAGE:"
+                    echo "Image created:"
                     echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+
+                    docker image inspect "${DOCKER_IMAGE}:${IMAGE_TAG}" > /dev/null
+
+                    echo "Docker image verification successful."
                 '''
             }
         }
 
-
         // =====================================================
-        // 13. DOCKER LOGIN
+        // 14. DOCKER LOGIN
         // =====================================================
 
         stage('Docker Login') {
+
             steps {
 
                 withCredentials([
@@ -343,17 +410,19 @@ stage('SonarQube Analysis') {
                         echo "$DOCKER_PASSWORD" | docker login \
                             --username "$DOCKER_USERNAME" \
                             --password-stdin
+
+                        echo "Docker Hub login successful."
                     '''
                 }
             }
         }
 
-
         // =====================================================
-        // 14. PUSH DOCKER IMAGE
+        // 15. DOCKER PUSH
         // =====================================================
 
         stage('Docker Push') {
+
             steps {
 
                 sh '''
@@ -364,17 +433,22 @@ stage('SonarQube Analysis') {
                     echo "Docker Image:"
                     echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
 
-                    docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                    docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
+
+                    echo ""
+                    echo "=========================================="
+                    echo "DOCKER PUSH COMPLETED"
+                    echo "=========================================="
                 '''
             }
         }
 
-
         // =====================================================
-        // 15. DOCKER LOGOUT
+        // 16. DOCKER LOGOUT
         // =====================================================
 
         stage('Docker Logout') {
+
             steps {
 
                 sh '''
@@ -383,11 +457,12 @@ stage('SonarQube Analysis') {
                     echo "=========================================="
 
                     docker logout || true
+
+                    echo "Docker logout completed."
                 '''
             }
         }
     }
-
 
     // =========================================================
     // POST ACTIONS
@@ -408,7 +483,6 @@ stage('SonarQube Analysis') {
             echo "Docker Image : ${DOCKER_IMAGE}:${IMAGE_TAG}"
         }
 
-
         failure {
 
             echo '''
@@ -420,7 +494,6 @@ stage('SonarQube Analysis') {
             echo "Build Number : ${BUILD_NUMBER}"
             echo "Check the Jenkins Console Output."
         }
-
 
         always {
 
