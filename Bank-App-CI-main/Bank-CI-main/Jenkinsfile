@@ -186,27 +186,8 @@ pipeline {
                             echo "SONAR CREDENTIAL BLOCK STARTED"
 
                             sh '''
-                                echo "=========================================="
-                                echo "SONARQUBE ANALYSIS"
-                                echo "=========================================="
-
-                                echo "Current directory:"
-                                pwd
-
-                                echo ""
-                                echo "Checking pom.xml:"
-                                ls -lh pom.xml
-
-                                echo ""
-                                echo "Maven version:"
-                                mvn -version
-
-                                echo ""
-                                echo "SonarQube URL:"
-                                echo "$SONAR_HOST_URL"
-
-                                echo ""
                                 echo "Starting SonarQube analysis..."
+                                cd BANKING-APPLICATIONS/Bank-App-CI-main/Bank-CI-main/
                                 mvn clean verify sonar:sonar \
                                   -Dsonar.projectKey=bank1 \
                                   -Dsonar.host.url=http://35.180.123.141:9000 \
