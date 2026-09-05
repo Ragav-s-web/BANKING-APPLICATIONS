@@ -7,9 +7,34 @@ pipeline {
         maven 'Maven'
     }
 
+    environment {
+        APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
+
+        SONAR_PROJECT_KEY = 'gcbank'
+        SONAR_PROJECT_NAME = 'gcbank'
+
+        DOCKER_IMAGE = 'castromeka/gcbank'
+        IMAGE_TAG = "v${BUILD_NUMBER}"
+    }
+
     stages {
 
-        stage('Checkout') {
+        // =========================================================
+        // 1. CLEAN WORKSPACE
+        // =========================================================
+
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+
+        // =========================================================
+        // 2. GIT CHECKOUT
+        // =========================================================
+
+        stage('Git Checkout') {
             steps {
                 git branch: 'main',
                     credentialsId: 'git-token',
@@ -17,57 +42,99 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // 3. CHECK JAVA & MAVEN
+        // =========================================================
+
         stage('Check Java & Maven') {
             steps {
                 sh '''
-                    echo "JAVA_HOME=$JAVA_HOME"
+                    echo "=========================================="
+                    echo "JAVA VERSION"
+                    echo "=========================================="
+
                     java -version
+
+                    echo ""
+                    echo "JAVAC VERSION"
                     javac -version
+
+                    echo ""
+                    echo "JAVA HOME"
+                    echo $JAVA_HOME
+
+                    echo ""
+                    echo "=========================================="
+                    echo "MAVEN VERSION"
+                    echo "=========================================="
+
                     mvn -version
                 '''
             }
         }
 
+
+        // =========================================================
+        // 4. CLEAN
+        // =========================================================
+
         stage('Clean') {
             steps {
-                dir('Bank-App-CI-main/Bank-CI-main') {
-                    sh 'mvn clean'
+                dir("${APP_DIR}") {
+                    sh '''
+                        mvn clean
+                    '''
                 }
             }
         }
+
+
+        // =========================================================
+        // 5. COMPILE
+        // =========================================================
 
         stage('Compile') {
             steps {
-                dir('Bank-App-CI-main/Bank-CI-main') {
-                    sh 'mvn compile'
+                dir("${APP_DIR}") {
+                    sh '''
+                        mvn compile
+                    '''
                 }
             }
         }
+
+
+        // =========================================================
+        // 6. TEST
+        // =========================================================
 
         stage('Test') {
             steps {
-                dir('Bank-App-CI-main/Bank-CI-main') {
-                    sh 'mvn test'
+                dir("${APP_DIR}") {
+                    sh '''
+                        mvn test
+                    '''
                 }
             }
         }
 
-        stage('Package') {
-            steps {
-                dir('Bank-App-CI-main/Bank-CI-main') {
-                    sh 'mvn package -DskipTests'
-                }
-            }
-        }
+
+        // =========================================================
+        // 7. SONARQUBE ANALYSIS
+        // =========================================================
 
         stage('SonarQube Analysis') {
             steps {
-                dir('Bank-App-CI-main/Bank-CI-main') {
+
+                dir("${APP_DIR}") {
+
                     withSonarQubeEnv('sonar') {
+
                         sh '''
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=gcbank \
-                            -Dsonar.projectName=gcbank \
+                            mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
                             -Dsonar.java.binaries=target/classes
                         '''
                     }
@@ -75,24 +142,117 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // 8. QUALITY GATE
+        // =========================================================
+
         stage('Quality Gate') {
             steps {
+
                 timeout(time: 5, unit: 'MINUTES') {
+
                     waitForQualityGate(
                         abortPipeline: false
                     )
                 }
             }
         }
+
+
+        // =========================================================
+        // 9. PACKAGE
+        // =========================================================
+
+        stage('Package') {
+            steps {
+
+                dir("${APP_DIR}") {
+
+                    sh '''
+                        mvn package -DskipTests
+                    '''
+                }
+            }
+        }
+
+
+        // =========================================================
+        // 10. DOCKER BUILD
+        // =========================================================
+
+        stage('Docker Build') {
+            steps {
+
+                dir("${APP_DIR}") {
+
+                    sh '''
+                        docker build \
+                        -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+                    '''
+                }
+            }
+        }
+
+
+        // =========================================================
+        // 11. DOCKER LOGIN & PUSH
+        // =========================================================
+
+        stage('Docker Push') {
+            steps {
+
+                script {
+
+                    withDockerRegistry(
+                        credentialsId: 'docker-cred'
+                    ) {
+
+                        sh '''
+                            docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        '''
+                    }
+                }
+            }
+        }
     }
 
+
+    // =============================================================
+    // POST ACTIONS
+    // =============================================================
+
     post {
+
         success {
-            echo 'BUILD SUCCESSFUL'
+
+            echo '''
+            ==========================================
+              BANKING APPLICATION PIPELINE SUCCESS
+            ==========================================
+            '''
+
+            echo "Docker Image:"
+            echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
         }
 
         failure {
-            echo 'BUILD FAILED'
+
+            echo '''
+            ==========================================
+              BANKING APPLICATION PIPELINE FAILED
+            ==========================================
+            '''
+
+            echo "Please check the Jenkins Console Output."
+        }
+
+        always {
+
+            echo "=========================================="
+            echo "BUILD NUMBER : ${BUILD_NUMBER}"
+            echo "BUILD STATUS : ${currentBuild.currentResult}"
+            echo "=========================================="
         }
     }
 }
