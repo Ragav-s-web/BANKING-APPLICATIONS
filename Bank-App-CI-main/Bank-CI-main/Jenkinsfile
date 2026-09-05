@@ -204,7 +204,6 @@ stage('SonarQube Analysis') {
 
                         echo "SONARQUBE COMPLETED"
 
-                        find . -name "report-task.txt" -print
                     '''
                 }
             }
