@@ -28,10 +28,6 @@ pipeline {
         SONAR_PROJECT_KEY = 'gcbank'
         SONAR_PROJECT_NAME = 'gcbank'
         SONARQUBE_CREDENTIALS = credentials('sonarqube-token')
-
-        // Docker
-        DOCKER_IMAGE = 'ragavkumar/ragavapp'
-        IMAGE_TAG = 'latest'
     }
 
     // =========================================================
@@ -330,15 +326,21 @@ pipeline {
                 }
             }
         }
-        stage('Docker Check') {
+
+        // =====================================================
+        // 13. DOCKER RUN
+        // =====================================================
+
+        stage('Docker Run') {
 
             steps {
 
                 sh 'docker run -d --name ragavprojectbank -p 8081:80 ragavkumar/ragavapp:latest'
             }
         }
+
         // =====================================================
-        // 13. DOCKER LOGOUT
+        // 14. DOCKER LOGOUT
         // =====================================================
 
         stage('Docker Logout') {
