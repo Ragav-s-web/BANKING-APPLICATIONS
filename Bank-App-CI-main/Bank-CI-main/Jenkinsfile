@@ -147,19 +147,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
 
-                dir("${APP_DIR}") {
-
-                    withSonarQubeEnv('sonar') {
-
                         sh '''
-                            mvn clean verify sonar:sonar \
-                              -Dsonar.projectKey=hggg \
-                              -Dsonar.host.url=http://35.180.123.141:9000 \
-                              -Dsonar.login=sqp_db4003d5c5d614c4fdd0c50b4c9085cbd958cd16
+                            mvn clean verify sonar:sonar -Dsonar.projectKey=hggg -Dsonar.host.url=http://35.180.123.141:9000 -Dsonar.login=sqp_db4003d5c5d614c4fdd0c50b4c9085cbd958cd16
                         '''
-                    }
                 }
-            }
         }
 
 
