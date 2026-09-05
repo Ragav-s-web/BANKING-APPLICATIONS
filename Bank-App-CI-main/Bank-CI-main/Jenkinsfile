@@ -1,313 +1,424 @@
-pipeline {
+node {
 
-    agent any
+    // =========================================================
+    // TOOL CONFIGURATION
+    // =========================================================
 
-    tools {
-        jdk 'Java21'
-        maven 'Maven'
-    }
+    def javaHome = tool 'Java21'
+    def mavenHome = tool 'Maven'
 
-    environment {
+    env.JAVA_HOME = javaHome
+    env.PATH = "${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
 
-        // Application directory
-        APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
+    // =========================================================
+    // VARIABLES
+    // =========================================================
 
-        // SonarQube
-        SONAR_PROJECT_KEY = 'gcbank'
-        SONAR_PROJECT_NAME = 'gcbank'
+    def APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
 
-        // Docker
-        DOCKER_IMAGE = 'castromeka/gcbank'
-        IMAGE_TAG = "v${BUILD_NUMBER}"
-    }
+    def SONAR_PROJECT_KEY = 'gcbank'
+    def SONAR_PROJECT_NAME = 'gcbank'
 
-    stages {
+    def DOCKER_IMAGE = 'castromeka/gcbank'
+    def IMAGE_TAG = "v${env.BUILD_NUMBER}"
 
-        // =========================================================
+    try {
+
+        // =====================================================
         // 1. CLEAN WORKSPACE
-        // =========================================================
+        // =====================================================
 
         stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
+
+            cleanWs()
+
         }
 
 
-        // =========================================================
-        // 2. CHECKOUT FROM GITHUB
-        // =========================================================
+        // =====================================================
+        // 2. GIT CHECKOUT
+        // =====================================================
 
         stage('Git Checkout') {
-            steps {
 
-                git(
-                    branch: 'main',
-                    credentialsId: 'git-token',
-                    url: 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
-                )
-            }
+            git(
+                branch: 'main',
+                credentialsId: 'git-token',
+                url: 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
+            )
+
         }
 
 
-        // =========================================================
-        // 3. VERIFY JAVA AND MAVEN
-        // =========================================================
+        // =====================================================
+        // 3. CHECK JAVA AND MAVEN
+        // =====================================================
 
         stage('Check Java & Maven') {
-            steps {
+
+            sh '''
+                echo "=========================================="
+                echo "JAVA VERSION"
+                echo "=========================================="
+
+                java -version
+
+                echo ""
+                echo "=========================================="
+                echo "JAVAC VERSION"
+                echo "=========================================="
+
+                javac -version
+
+                echo ""
+                echo "=========================================="
+                echo "JAVA HOME"
+                echo "=========================================="
+
+                echo "$JAVA_HOME"
+
+                echo ""
+                echo "=========================================="
+                echo "MAVEN VERSION"
+                echo "=========================================="
+
+                mvn -version
+            '''
+
+        }
+
+
+        // =====================================================
+        // 4. MAVEN CLEAN
+        // =====================================================
+
+        stage('Maven Clean') {
+
+            dir(APP_DIR) {
 
                 sh '''
                     echo "=========================================="
-                    echo "JAVA VERSION"
+                    echo "MAVEN CLEAN"
                     echo "=========================================="
 
-                    java -version
-
-                    echo ""
-                    echo "=========================================="
-                    echo "JAVAC VERSION"
-                    echo "=========================================="
-
-                    javac -version
-
-                    echo ""
-                    echo "=========================================="
-                    echo "JAVA HOME"
-                    echo "=========================================="
-
-                    echo "$JAVA_HOME"
-
-                    echo ""
-                    echo "=========================================="
-                    echo "MAVEN VERSION"
-                    echo "=========================================="
-
-                    mvn -version
+                    mvn clean
                 '''
+
             }
+
         }
 
 
-        // =========================================================
-        // 4. CLEAN MAVEN PROJECT
-        // =========================================================
-
-        stage('Maven Clean') {
-            steps {
-
-                dir("${APP_DIR}") {
-
-                    sh '''
-                        mvn clean
-                    '''
-                }
-            }
-        }
-
-
-        // =========================================================
+        // =====================================================
         // 5. COMPILE
-        // =========================================================
+        // =====================================================
 
         stage('Compile') {
-            steps {
 
-                dir("${APP_DIR}") {
+            dir(APP_DIR) {
 
-                    sh '''
-                        mvn compile
-                    '''
-                }
+                sh '''
+                    echo "=========================================="
+                    echo "MAVEN COMPILE"
+                    echo "=========================================="
+
+                    mvn compile
+                '''
+
             }
+
         }
 
 
-        // =========================================================
+        // =====================================================
         // 6. UNIT TEST
-        // =========================================================
+        // =====================================================
 
         stage('Test') {
-            steps {
 
-                dir("${APP_DIR}") {
+            dir(APP_DIR) {
 
-                    sh '''
-                        mvn test
-                    '''
-                }
+                sh '''
+                    echo "=========================================="
+                    echo "UNIT TEST"
+                    echo "=========================================="
+
+                    mvn test
+                '''
+
             }
+
         }
 
 
-        // =========================================================
+        // =====================================================
         // 7. SONARQUBE ANALYSIS
-        // =========================================================
+        // =====================================================
 
         stage('SonarQube Analysis') {
-            steps {
+
+            dir(APP_DIR) {
+
+                withSonarQubeEnv('sonar') {
+
+                    withCredentials([
+                        string(
+                            credentialsId: 'sonar-token',
+                            variable: 'SONAR_TOKEN'
+                        )
+                    ]) {
 
                         sh '''
-                           cd Bank-App-CI-main/Bank-CI-main
+                            echo "=========================================="
+                            echo "SONARQUBE ANALYSIS"
+                            echo "=========================================="
 
-                                mvn clean verify
-                                
-                                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar -Dsonar.projectKey=hggg -Dsonar.host.url=http://35.180.123.141:9000 -Dsonar.login=sqp_db4003d5c5d614c4fdd0c50b4c9085cbd958cd16 
-                        ''' 
-                } 
-        } 
- 
- 
-        // ========================================================= 
-        // 9. CREATE JAR 
-        // ========================================================= 
- 
-        stage('Package') { 
-            steps { 
- 
-                dir("${APP_DIR}") { 
- 
-                    sh ''' 
-                        mvn package -DskipTests 
-                    ''' 
-                } 
-            } 
-        } 
- 
- 
-        // ========================================================= 
-        // 10. SHOW BUILD ARTIFACT 
-        // ========================================================= 
- 
-        stage('Show Artifact') { 
-            steps { 
- 
-                dir("${APP_DIR}") { 
- 
-                    sh ''' 
-                        echo "==========================================" 
-                        echo "BUILD ARTIFACT" 
-                        echo "==========================================" 
- 
-                        ls -lh target/ 
-                    ''' 
-                } 
-            } 
-        } 
- 
- 
-        // ========================================================= 
-        // 11. DOCKER BUILD 
-        // ========================================================= 
- 
-        stage('Docker Build') { 
-            steps { 
- 
-                dir("${APP_DIR}") { 
- 
-                    sh ''' 
-                        echo "==========================================" 
-                        echo "BUILDING DOCKER IMAGE" 
-                        echo "==========================================" 
- 
-                        docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} 
-                            . 
-                    ''' 
-                } 
-            } 
-        } 
- 
- 
-        // ========================================================= 
-        // 12. DOCKER IMAGE CHECK 
-        // ========================================================= 
- 
-        stage('Docker Image Check') { 
-            steps { 
- 
-                sh ''' 
-                    echo "==========================================" 
-                    echo "DOCKER IMAGE" 
-                    echo "==========================================" 
- 
-                    docker images ${DOCKER_IMAGE} 
- 
-                    echo "" 
-                    echo "IMAGE:" 
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}" 
-                ''' 
-            } 
-        } 
- 
- 
-        // ========================================================= 
-        // 13. PUSH DOCKER IMAGE 
-        // ========================================================= 
- 
-        stage('Docker Push') { 
-            steps { 
- 
-                script { 
- 
-                    withDockerRegistry( 
-                        credentialsId: 'docker-cred' 
-                    ) { 
- 
-                        sh ''' 
-                            echo "==========================================" 
-                            echo "PUSHING DOCKER IMAGE" 
-                            echo "==========================================" 
- 
-                            docker push ${DOCKER_IMAGE}:${IMAGE_TAG} 
-                        ''' 
-                    } 
-                } 
-            } 
-        } 
-    } 
- 
- 
-    // ============================================================= 
-    // POST ACTIONS 
-    // ============================================================= 
- 
-    post { 
- 
-        success { 
- 
-            echo ''' 
-            ========================================== 
-              BANKING APPLICATION PIPELINE SUCCESS 
-            ========================================== 
-            ''' 
- 
-            echo "Application build completed successfully." 
- 
-            echo "Docker Image:" 
-            echo "${DOCKER_IMAGE}:${IMAGE_TAG}" 
-        } 
- 
- 
-        failure { 
- 
-            echo ''' 
-            ========================================== 
-              BANKING APPLICATION PIPELINE FAILED 
-            ========================================== 
-            ''' 
- 
-            echo "Check the Jenkins Console Output." 
-        } 
- 
- 
-        always { 
- 
-            echo "==========================================" 
-            echo "BUILD INFORMATION" 
-            echo "==========================================" 
- 
-            echo "BUILD NUMBER : ${BUILD_NUMBER}" 
-            echo "BUILD STATUS : ${currentBuild.currentResult}" 
-        } 
-    } 
-} correct my code
+                            mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
+                                -Dsonar.projectKey=gcbank \
+                                -Dsonar.projectName=gcbank \
+                                -Dsonar.host.url=${SONAR_HOST_URL} \
+                                -Dsonar.token=${SONAR_TOKEN} \
+                                -Dsonar.java.binaries=target/classes
+                        '''
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 8. QUALITY GATE
+        // =====================================================
+
+        stage('Quality Gate') {
+
+            timeout(
+                time: 5,
+                unit: 'MINUTES'
+            ) {
+
+                waitForQualityGate(
+                    abortPipeline: false
+                )
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 9. CREATE JAR
+        // =====================================================
+
+        stage('Package') {
+
+            dir(APP_DIR) {
+
+                sh '''
+                    echo "=========================================="
+                    echo "CREATING JAR"
+                    echo "=========================================="
+
+                    mvn package -DskipTests
+                '''
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 10. SHOW ARTIFACT
+        // =====================================================
+
+        stage('Show Artifact') {
+
+            dir(APP_DIR) {
+
+                sh '''
+                    echo "=========================================="
+                    echo "BUILD ARTIFACT"
+                    echo "=========================================="
+
+                    ls -lh target/
+                '''
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 11. DOCKER CHECK
+        // =====================================================
+
+        stage('Docker Check') {
+
+            sh '''
+                echo "=========================================="
+                echo "DOCKER VERSION"
+                echo "=========================================="
+
+                docker --version
+            '''
+
+        }
+
+
+        // =====================================================
+        // 12. DOCKER BUILD
+        // =====================================================
+
+        stage('Docker Build') {
+
+            dir(APP_DIR) {
+
+                sh """
+                    echo "=========================================="
+                    echo "BUILDING DOCKER IMAGE"
+                    echo "=========================================="
+
+                    docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+
+                    echo ""
+                    echo "Docker image:"
+                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                """
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 13. DOCKER IMAGE CHECK
+        // =====================================================
+
+        stage('Docker Image Check') {
+
+            sh """
+                echo "=========================================="
+                echo "DOCKER IMAGE"
+                echo "=========================================="
+
+                docker images ${DOCKER_IMAGE}
+
+                echo ""
+                echo "IMAGE:"
+                echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+            """
+
+        }
+
+
+        // =====================================================
+        // 14. DOCKER LOGIN
+        // =====================================================
+
+        stage('Docker Login') {
+
+            withCredentials([
+                usernamePassword(
+                    credentialsId: 'docker-cred',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )
+            ]) {
+
+                sh '''
+                    echo "=========================================="
+                    echo "DOCKER HUB LOGIN"
+                    echo "=========================================="
+
+                    echo "$DOCKER_PASSWORD" | docker login \
+                        --username "$DOCKER_USERNAME" \
+                        --password-stdin
+                '''
+
+            }
+
+        }
+
+
+        // =====================================================
+        // 15. DOCKER PUSH
+        // =====================================================
+
+        stage('Docker Push') {
+
+            sh """
+                echo "=========================================="
+                echo "PUSHING DOCKER IMAGE"
+                echo "=========================================="
+
+                echo "Docker Image:"
+                echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+
+                docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+            """
+
+        }
+
+
+        // =====================================================
+        // 16. DOCKER LOGOUT
+        // =====================================================
+
+        stage('Docker Logout') {
+
+            sh '''
+                echo "=========================================="
+                echo "DOCKER LOGOUT"
+                echo "=========================================="
+
+                docker logout || true
+            '''
+
+        }
+
+
+        // =====================================================
+        // SUCCESS
+        // =====================================================
+
+        echo ""
+        echo "=========================================="
+        echo "BANKING APPLICATION PIPELINE SUCCESS"
+        echo "=========================================="
+        echo "Build Number : ${env.BUILD_NUMBER}"
+        echo "Docker Image : ${DOCKER_IMAGE}:${IMAGE_TAG}"
+        echo "Status       : SUCCESS"
+        echo "=========================================="
+
+    }
+
+    catch (Exception e) {
+
+        echo ""
+        echo "=========================================="
+        echo "BANKING APPLICATION PIPELINE FAILED"
+        echo "=========================================="
+        echo "Build Number : ${env.BUILD_NUMBER}"
+        echo "Status       : FAILED"
+        echo "=========================================="
+
+        throw e
+
+    }
+
+    finally {
+
+        echo ""
+        echo "=========================================="
+        echo "BUILD INFORMATION"
+        echo "=========================================="
+        echo "BUILD NUMBER : ${env.BUILD_NUMBER}"
+        echo "=========================================="
+
+    }
+
+}
