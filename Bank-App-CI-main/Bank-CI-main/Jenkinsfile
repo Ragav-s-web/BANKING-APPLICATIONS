@@ -256,6 +256,36 @@ pipeline {
             }
         }
 
+        // =====================================================
+        // 11. DOCKER IMAGE CHECK
+        // =====================================================
+
+        stage('Docker Image Check') {
+
+            steps {
+
+                sh '''
+                    echo "=========================================="
+                    echo "DOCKER IMAGE CHECK"
+                    echo "=========================================="
+
+                    docker images
+
+                    echo ""
+                    echo "Tagging Docker image..."
+
+                    docker tag ragavapp "${DOCKER_IMAGE}:${IMAGE_TAG}"
+
+                    echo ""
+                    echo "Tagged image:"
+                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                '''
+            }
+        }
+
+        // =====================================================
+        // 12. DOCKER LOGIN
+        // =====================================================
 
         stage('Docker Login') {
 
@@ -297,11 +327,7 @@ pipeline {
             }
         }
 
-        // =====================================================
-        // 13. DOCKER RUN
-        // =====================================================
-
-        stage('Docker Run') {
+        stage('Docker Check') {
 
             steps {
 
@@ -310,7 +336,7 @@ pipeline {
         }
 
         // =====================================================
-        // 14. DOCKER LOGOUT
+        // 13. DOCKER LOGOUT
         // =====================================================
 
         stage('Docker Logout') {
