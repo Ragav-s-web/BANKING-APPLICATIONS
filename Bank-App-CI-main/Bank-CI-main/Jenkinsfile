@@ -318,7 +318,7 @@ pipeline {
                         echo "DOCKER HUB LOGIN"
                         echo "=========================================="
 
-                        echo "$DOCKER_PASSWORD" | docker login \
+                        sh "$DOCKER_PASSWORD" | docker login \
                             --username "$DOCKER_USERNAME" \
                             --password-stdin
 
@@ -326,11 +326,12 @@ pipeline {
                         echo "=========================================="
                         echo "PUSHING DOCKER IMAGE"
                         echo "=========================================="
+                        docket tag ragavkumar/gcbank:v50 ragavkumar/gcbank:v50:latest
     
                         echo "Docker Image:"
                         echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
     
-                        docker push "${banking}:${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        docker push ragavkumar/gcbank:v50:latest
     
                         echo ""
                         echo "=========================================="
