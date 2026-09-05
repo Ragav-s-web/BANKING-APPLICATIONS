@@ -24,6 +24,10 @@ pipeline {
         // Application directory
         APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
 
+        // Docker image details
+        DOCKER_IMAGE = 'ragavkumar/ragavapp'
+        IMAGE_TAG = 'latest'
+
         // SonarQube
         SONAR_PROJECT_KEY = 'gcbank'
         SONAR_PROJECT_NAME = 'gcbank'
@@ -166,10 +170,9 @@ pipeline {
         }
 
         // =====================================================
-        // 7. SONARQUBE ANALYSIS
+        // 7. PACKAGE
         // =====================================================
 
-        
         stage('Package') {
 
             steps {
@@ -188,7 +191,7 @@ pipeline {
         }
 
         // =====================================================
-        // 10. SHOW BUILD ARTIFACT
+        // 8. SHOW BUILD ARTIFACT
         // =====================================================
 
         stage('Show Artifact') {
@@ -213,7 +216,7 @@ pipeline {
         }
 
         // =====================================================
-        // 11. DOCKER CHECK
+        // 9. DOCKER CHECK
         // =====================================================
 
         stage('Docker Check') {
@@ -235,37 +238,37 @@ pipeline {
         }
 
         // =====================================================
-        // 12. DOCKER BUILD
+        // 10. DOCKER BUILD
         // =====================================================
 
-        stage('Docker Build') 
-
-
-
-{
+        stage('Docker Build') {
 
             steps {
 
                 dir("${APP_DIR}") {
-			
-			sh 'docker build -t ragavapp .'
+
+                    sh 'docker build -t ragavapp .'
+                }
+            }
+        }
+
         // =====================================================
-        // 13. DOCKER IMAGE CHECK
+        // 11. DOCKER IMAGE CHECK
         // =====================================================
 
         stage('Docker Image Check') {
 
             steps {
-		
-		sh 'docker tag ragavapp ragavkumar/ragavapp:latest'
+
+                sh "docker tag ragavapp ${DOCKER_IMAGE}:${IMAGE_TAG}"
             }
         }
 
         // =====================================================
-        // 14. DOCKER LOGIN
+        // 12. DOCKER LOGIN & PUSH
         // =====================================================
 
-        stage('Docker Login') {
+        stage('Docker Push') {
 
             steps {
 
@@ -278,15 +281,18 @@ pipeline {
                 ]) {
 
                     sh '''
-
                         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    
                         docker push ragavkumar/ragavapp:latest
                     '''
                 }
             }
         }
-	 stage('Docker Login') {
+
+        // =====================================================
+        // 13. DOCKER RUN
+        // =====================================================
+
+        stage('Docker Run') {
 
             steps {
 
@@ -299,15 +305,17 @@ pipeline {
                 ]) {
 
                     sh '''
-
                         echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    
+                        docker rm -f ragavapp1 || true
                         docker run -d --name ragavapp1 -p 8081:80 ragavkumar/ragavapp:latest
                     '''
                 }
             }
         }
 
+        // =====================================================
+        // 14. DOCKER LOGOUT
+        // =====================================================
 
         stage('Docker Logout') {
 
@@ -368,6 +376,3 @@ pipeline {
         }
     }
 }
-
-
-ragavkumar/ragavapp:latest
