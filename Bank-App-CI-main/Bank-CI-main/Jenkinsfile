@@ -8,11 +8,15 @@ pipeline {
     }
 
     environment {
+
+        // Application directory
         APP_DIR = 'Bank-App-CI-main/Bank-CI-main'
 
+        // SonarQube
         SONAR_PROJECT_KEY = 'gcbank'
         SONAR_PROJECT_NAME = 'gcbank'
 
+        // Docker
         DOCKER_IMAGE = 'castromeka/gcbank'
         IMAGE_TAG = "v${BUILD_NUMBER}"
     }
@@ -31,24 +35,28 @@ pipeline {
 
 
         // =========================================================
-        // 2. GIT CHECKOUT
+        // 2. CHECKOUT FROM GITHUB
         // =========================================================
 
         stage('Git Checkout') {
             steps {
-                git branch: 'main',
+
+                git(
+                    branch: 'main',
                     credentialsId: 'git-token',
                     url: 'https://github.com/Ragav-s-web/BANKING-APPLICATIONS.git'
+                )
             }
         }
 
 
         // =========================================================
-        // 3. CHECK JAVA & MAVEN
+        // 3. VERIFY JAVA AND MAVEN
         // =========================================================
 
         stage('Check Java & Maven') {
             steps {
+
                 sh '''
                     echo "=========================================="
                     echo "JAVA VERSION"
@@ -57,12 +65,18 @@ pipeline {
                     java -version
 
                     echo ""
+                    echo "=========================================="
                     echo "JAVAC VERSION"
+                    echo "=========================================="
+
                     javac -version
 
                     echo ""
+                    echo "=========================================="
                     echo "JAVA HOME"
-                    echo $JAVA_HOME
+                    echo "=========================================="
+
+                    echo "$JAVA_HOME"
 
                     echo ""
                     echo "=========================================="
@@ -76,12 +90,14 @@ pipeline {
 
 
         // =========================================================
-        // 4. CLEAN
+        // 4. CLEAN MAVEN PROJECT
         // =========================================================
 
-        stage('Clean') {
+        stage('Maven Clean') {
             steps {
+
                 dir("${APP_DIR}") {
+
                     sh '''
                         mvn clean
                     '''
@@ -96,7 +112,9 @@ pipeline {
 
         stage('Compile') {
             steps {
+
                 dir("${APP_DIR}") {
+
                     sh '''
                         mvn compile
                     '''
@@ -106,12 +124,14 @@ pipeline {
 
 
         // =========================================================
-        // 6. TEST
+        // 6. UNIT TEST
         // =========================================================
 
         stage('Test') {
             steps {
+
                 dir("${APP_DIR}") {
+
                     sh '''
                         mvn test
                     '''
@@ -132,7 +152,7 @@ pipeline {
                     withSonarQubeEnv('sonar') {
 
                         sh '''
-                            mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+                            mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.projectName=${SONAR_PROJECT_NAME} \
                             -Dsonar.java.binaries=target/classes
@@ -150,7 +170,10 @@ pipeline {
         stage('Quality Gate') {
             steps {
 
-                timeout(time: 5, unit: 'MINUTES') {
+                timeout(
+                    time: 5,
+                    unit: 'MINUTES'
+                ) {
 
                     waitForQualityGate(
                         abortPipeline: false
@@ -161,7 +184,7 @@ pipeline {
 
 
         // =========================================================
-        // 9. PACKAGE
+        // 9. CREATE JAR
         // =========================================================
 
         stage('Package') {
@@ -178,7 +201,28 @@ pipeline {
 
 
         // =========================================================
-        // 10. DOCKER BUILD
+        // 10. SHOW BUILD ARTIFACT
+        // =========================================================
+
+        stage('Show Artifact') {
+            steps {
+
+                dir("${APP_DIR}") {
+
+                    sh '''
+                        echo "=========================================="
+                        echo "BUILD ARTIFACT"
+                        echo "=========================================="
+
+                        ls -lh target/
+                    '''
+                }
+            }
+        }
+
+
+        // =========================================================
+        // 11. DOCKER BUILD
         // =========================================================
 
         stage('Docker Build') {
@@ -187,8 +231,13 @@ pipeline {
                 dir("${APP_DIR}") {
 
                     sh '''
+                        echo "=========================================="
+                        echo "BUILDING DOCKER IMAGE"
+                        echo "=========================================="
+
                         docker build \
-                        -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+                            -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                            .
                     '''
                 }
             }
@@ -196,7 +245,29 @@ pipeline {
 
 
         // =========================================================
-        // 11. DOCKER LOGIN & PUSH
+        // 12. DOCKER IMAGE CHECK
+        // =========================================================
+
+        stage('Docker Image Check') {
+            steps {
+
+                sh '''
+                    echo "=========================================="
+                    echo "DOCKER IMAGE"
+                    echo "=========================================="
+
+                    docker images ${DOCKER_IMAGE}
+
+                    echo ""
+                    echo "IMAGE:"
+                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                '''
+            }
+        }
+
+
+        // =========================================================
+        // 13. PUSH DOCKER IMAGE
         // =========================================================
 
         stage('Docker Push') {
@@ -209,6 +280,10 @@ pipeline {
                     ) {
 
                         sh '''
+                            echo "=========================================="
+                            echo "PUSHING DOCKER IMAGE"
+                            echo "=========================================="
+
                             docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
                         '''
                     }
@@ -232,9 +307,12 @@ pipeline {
             ==========================================
             '''
 
+            echo "Application build completed successfully."
+
             echo "Docker Image:"
             echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
         }
+
 
         failure {
 
@@ -244,15 +322,18 @@ pipeline {
             ==========================================
             '''
 
-            echo "Please check the Jenkins Console Output."
+            echo "Check the Jenkins Console Output."
         }
+
 
         always {
 
             echo "=========================================="
+            echo "BUILD INFORMATION"
+            echo "=========================================="
+
             echo "BUILD NUMBER : ${BUILD_NUMBER}"
             echo "BUILD STATUS : ${currentBuild.currentResult}"
-            echo "=========================================="
         }
     }
 }
