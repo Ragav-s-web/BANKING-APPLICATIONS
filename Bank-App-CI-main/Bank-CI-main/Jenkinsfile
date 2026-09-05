@@ -2,10 +2,18 @@ pipeline {
 
     agent any
 
+    // =========================================================
+    // TOOLS
+    // =========================================================
+
     tools {
         jdk 'Java21'
         maven 'Maven'
     }
+
+    // =========================================================
+    // ENVIRONMENT
+    // =========================================================
 
     environment {
 
@@ -90,7 +98,7 @@ pipeline {
 
 
         // =========================================================
-        // 4. CLEAN MAVEN PROJECT
+        // 4. MAVEN CLEAN
         // =========================================================
 
         stage('Maven Clean') {
@@ -99,6 +107,10 @@ pipeline {
                 dir("${APP_DIR}") {
 
                     sh '''
+                        echo "=========================================="
+                        echo "MAVEN CLEAN"
+                        echo "=========================================="
+
                         mvn clean
                     '''
                 }
@@ -116,6 +128,10 @@ pipeline {
                 dir("${APP_DIR}") {
 
                     sh '''
+                        echo "=========================================="
+                        echo "MAVEN COMPILE"
+                        echo "=========================================="
+
                         mvn compile
                     '''
                 }
@@ -133,6 +149,10 @@ pipeline {
                 dir("${APP_DIR}") {
 
                     sh '''
+                        echo "=========================================="
+                        echo "RUNNING UNIT TESTS"
+                        echo "=========================================="
+
                         mvn test
                     '''
                 }
@@ -147,17 +167,53 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
 
-                        sh '''
-                           cd Bank-App-CI-main/Bank-CI-main
+                dir("${APP_DIR}") {
 
-                                mvn clean verify
-                                
+                    withSonarQubeEnv('sonar') {
+
+                        withCredentials([
+                            string(
+                                credentialsId: 'sonar-token',
+                                variable: 'SONAR_TOKEN'
+                            )
+                        ]) {
+
+                            sh '''
+                                echo "=========================================="
+                                echo "SONARQUBE ANALYSIS"
+                                echo "=========================================="
+
                                 mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
-                                -Dsonar.projectKey=hggg \
-                                -Dsonar.host.url=http://35.180.123.141:9000 \
-                                -Dsonar.login=sqp_db4003d5c5d614c4fdd0c50b4c9085cbd958cd16
-                        '''
+                                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                    -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                                    -Dsonar.token=${SONAR_TOKEN} \
+                                    -Dsonar.java.binaries=target/classes
+                            '''
+                        }
+                    }
                 }
+            }
+        }
+
+
+        // =========================================================
+        // 8. SONARQUBE QUALITY GATE
+        // =========================================================
+
+        stage('Quality Gate') {
+            steps {
+
+                timeout(
+                    time: 5,
+                    unit: 'MINUTES'
+                ) {
+
+                    waitForQualityGate(
+                        abortPipeline: false
+                    )
+                }
+            }
         }
 
 
@@ -171,6 +227,10 @@ pipeline {
                 dir("${APP_DIR}") {
 
                     sh '''
+                        echo "=========================================="
+                        echo "CREATING JAR"
+                        echo "=========================================="
+
                         mvn package -DskipTests
                     '''
                 }
@@ -216,6 +276,10 @@ pipeline {
                         docker build \
                             -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
                             .
+
+                        echo ""
+                        echo "Docker image created:"
+                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
                     '''
                 }
             }
@@ -245,35 +309,77 @@ pipeline {
 
 
         // =========================================================
-        // 13. PUSH DOCKER IMAGE
+        // 13. DOCKER LOGIN
+        // =========================================================
+
+        stage('Docker Login') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-cred',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+
+                    sh '''
+                        echo "=========================================="
+                        echo "DOCKER HUB LOGIN"
+                        echo "=========================================="
+
+                        echo "$DOCKER_PASSWORD" | docker login \
+                            --username "$DOCKER_USERNAME" \
+                            --password-stdin
+                    '''
+                }
+            }
+        }
+
+
+        // =========================================================
+        // 14. PUSH DOCKER IMAGE
         // =========================================================
 
         stage('Docker Push') {
             steps {
 
-                script {
+                sh '''
+                    echo "=========================================="
+                    echo "PUSHING DOCKER IMAGE"
+                    echo "=========================================="
 
-                    withDockerRegistry(
-                        credentialsId: 'docker-cred'
-                    ) {
+                    echo "Docker Image:"
+                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
 
-                        sh '''
-                            echo "=========================================="
-                            echo "PUSHING DOCKER IMAGE"
-                            echo "=========================================="
+                    docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                '''
+            }
+        }
 
-                            docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-                        '''
-                    }
-                }
+
+        // =========================================================
+        // 15. DOCKER LOGOUT
+        // =========================================================
+
+        stage('Docker Logout') {
+            steps {
+
+                sh '''
+                    echo "=========================================="
+                    echo "DOCKER LOGOUT"
+                    echo "=========================================="
+
+                    docker logout || true
+                '''
             }
         }
     }
 
 
-    // =============================================================
+    // =========================================================
     // POST ACTIONS
-    // =============================================================
+    // =========================================================
 
     post {
 
@@ -286,9 +392,8 @@ pipeline {
             '''
 
             echo "Application build completed successfully."
-
-            echo "Docker Image:"
-            echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo "Build Number : ${BUILD_NUMBER}"
+            echo "Docker Image : ${DOCKER_IMAGE}:${IMAGE_TAG}"
         }
 
 
@@ -300,6 +405,7 @@ pipeline {
             ==========================================
             '''
 
+            echo "Build Number : ${BUILD_NUMBER}"
             echo "Check the Jenkins Console Output."
         }
 
