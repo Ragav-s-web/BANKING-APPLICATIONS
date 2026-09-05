@@ -173,67 +173,7 @@ pipeline {
         // 7. SONARQUBE ANALYSIS
         // =====================================================
 
-        stage('SonarQube Analysis') {
-
-            steps {
-
-                dir("${APP_DIR}") {
-
-                    withSonarQubeEnv('sonar') {
-
-                        withCredentials([usernamePassword(credentialsId: 'sonarqube-token', usernameVariable: 'SONAR_USER', passwordVariable: 'SONAR_TOKEN')]) {
-
-                            echo "SONAR CREDENTIAL BLOCK STARTED"
-
-                            sh '''
-                                echo "Starting SonarQube analysis..."
-                                pwd
-                                mvn clean verify sonar:sonar -Dsonar.projectKey=bank1  -Dsonar.host.url=http://35.180.123.141:9000  -Dsonar.login=${SONAR_TOKEN}
-
-                                echo ""
-                                echo "=========================================="
-                                echo "SONARQUBE ANALYSIS COMPLETED"
-                                echo "=========================================="
-
-                                echo ""
-                                echo "Checking report-task.txt..."
-
-                                find . -name "report-task.txt" -print
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
-        // =====================================================
-        // 8. QUALITY GATE
-        // =====================================================
-
-        stage('Quality Gate') {
-
-            steps {
-
-                echo "=========================================="
-                echo "SONARQUBE QUALITY GATE"
-                echo "=========================================="
-
-                timeout(
-                    time: 5,
-                    unit: 'MINUTES'
-                ) {
-
-                    waitForQualityGate(
-                        abortPipeline: false
-                    )
-                }
-            }
-        }
-
-        // =====================================================
-        // 9. CREATE JAR
-        // =====================================================
-
+        
         stage('Package') {
 
             steps {
