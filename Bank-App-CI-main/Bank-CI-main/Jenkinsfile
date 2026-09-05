@@ -28,10 +28,6 @@ pipeline {
         SONAR_PROJECT_KEY = 'gcbank'
         SONAR_PROJECT_NAME = 'gcbank'
         SONARQUBE_CREDENTIALS = credentials('sonarqube-token')
-
-        // Docker Hub
-        DOCKER_IMAGE = 'ragavkumar/gcbank'
-        IMAGE_TAG = "v${BUILD_NUMBER}"
     }
 
     // =========================================================
@@ -247,30 +243,8 @@ pipeline {
             steps {
 
                 dir("${APP_DIR}") {
-
-                    sh '''
-                        echo "=========================================="
-                        echo "BUILDING DOCKER IMAGE"
-                        echo "=========================================="
-
-                        echo "Docker image:"
-                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                        docker build \
-                            -t "${DOCKER_IMAGE}:${IMAGE_TAG}" \
-                            .
-
-                        echo ""
-                        echo "=========================================="
-                        echo "DOCKER BUILD COMPLETED"
-                        echo "=========================================="
-
-                        docker images "${DOCKER_IMAGE}"
-                    '''
-                }
-            }
-        }
-
+			
+			sh 'docker build -t ragavapp .'
         // =====================================================
         // 13. DOCKER IMAGE CHECK
         // =====================================================
@@ -278,22 +252,8 @@ pipeline {
         stage('Docker Image Check') {
 
             steps {
-
-                sh '''
-                    echo "=========================================="
-                    echo "DOCKER IMAGE CHECK"
-                    echo "=========================================="
-
-                    docker images "${DOCKER_IMAGE}"
-
-                    echo ""
-                    echo "Image created:"
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                    docker image inspect "${DOCKER_IMAGE}:${IMAGE_TAG}" > /dev/null
-
-                    echo "Docker image verification successful."
-                '''
+		
+		sh 'docker tag ragavapp ragavkumar/ragavapp:latest'
             }
         }
 
@@ -314,32 +274,14 @@ pipeline {
                 ]) {
 
                     sh '''
-                        echo "=========================================="
-                        echo "DOCKER HUB LOGIN"
-                        echo "=========================================="
 
-                        sh "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-                        echo "Docker Hub login successful."
-                        echo "=========================================="
-                        echo "PUSHING DOCKER IMAGE"
-                        echo "=========================================="
-                        docket tag ragavkumar/gcbank:v50 ragavkumar/gcbank:v50:latest
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     
-                        docker push ragavkumar/gcbank:v50:latest
-    
-                        echo ""
-                        echo "=========================================="
-                        echo "DOCKER PUSH COMPLETED"
-                        echo "=========================================="
+                        docker push ragavkumar/ragavapp:latest
                     '''
                 }
             }
         }
-
-        // =====================================================
-        // 15. DOCKER PUSH
-        // =====================================================
 
         stage('Docker Logout') {
 
