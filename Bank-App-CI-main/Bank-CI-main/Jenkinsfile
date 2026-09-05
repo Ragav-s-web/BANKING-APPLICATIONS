@@ -198,7 +198,7 @@ pipeline {
                             -Dsonar.projectKey=gcbank \
                             -Dsonar.projectName=gcbank \
                             -Dsonar.host.url="${http://35.180.123.141:9000}" \
-                            -Dsonar.token="${sqp_d31fea056adde226dae802cfad168c95f72d1bd6}" \
+                            -Dsonar.token="${SONAR_TOKEN}" \
                             -Dsonar.java.binaries=target/classes
 
                         echo "=========================================="
