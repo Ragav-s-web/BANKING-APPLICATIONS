@@ -187,6 +187,7 @@ pipeline {
 
                             sh '''
                                 echo "Starting SonarQube analysis..."
+                                pwd
                                 cd BANKING-APPLICATIONS/Bank-App-CI-main/Bank-CI-main/
                                 mvn clean verify sonar:sonar \
                                   -Dsonar.projectKey=bank1 \
