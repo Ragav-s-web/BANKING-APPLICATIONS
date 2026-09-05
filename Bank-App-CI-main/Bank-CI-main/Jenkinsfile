@@ -166,9 +166,10 @@ pipeline {
         }
 
         // =====================================================
-        // 7. PACKAGE
+        // 7. SONARQUBE ANALYSIS
         // =====================================================
 
+        
         stage('Package') {
 
             steps {
@@ -187,7 +188,7 @@ pipeline {
         }
 
         // =====================================================
-        // 8. SHOW BUILD ARTIFACT
+        // 10. SHOW BUILD ARTIFACT
         // =====================================================
 
         stage('Show Artifact') {
@@ -212,7 +213,7 @@ pipeline {
         }
 
         // =====================================================
-        // 9. DOCKER CHECK
+        // 11. DOCKER CHECK
         // =====================================================
 
         stage('Docker Check') {
@@ -234,57 +235,34 @@ pipeline {
         }
 
         // =====================================================
-        // 10. DOCKER BUILD
+        // 12. DOCKER BUILD
         // =====================================================
 
-        stage('Docker Build') {
+        stage('Docker Build') 
+
+
+
+{
 
             steps {
 
                 dir("${APP_DIR}") {
-
-                    sh '''
-                        echo "=========================================="
-                        echo "DOCKER BUILD"
-                        echo "=========================================="
-
-                        docker build -t ragavapp .
-
-                        echo "Docker image build completed."
-                    '''
-                }
-            }
-        }
-
+			
+			sh 'docker build -t ragavapp .'
         // =====================================================
-        // 11. DOCKER IMAGE CHECK
+        // 13. DOCKER IMAGE CHECK
         // =====================================================
 
         stage('Docker Image Check') {
 
             steps {
-
-                sh '''
-                    echo "=========================================="
-                    echo "DOCKER IMAGE CHECK"
-                    echo "=========================================="
-
-                    docker images
-
-                    echo ""
-                    echo "Tagging Docker image..."
-
-                    docker tag ragavapp "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                    echo ""
-                    echo "Tagged image:"
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-                '''
+		
+		sh 'docker tag ragavapp ragavkumar/ragavapp:latest'
             }
         }
 
         // =====================================================
-        // 12. DOCKER LOGIN
+        // 14. DOCKER LOGIN
         // =====================================================
 
         stage('Docker Login') {
@@ -300,44 +278,36 @@ pipeline {
                 ]) {
 
                     sh '''
-                        echo "=========================================="
-                        echo "DOCKER HUB LOGIN"
-                        echo "=========================================="
 
-                        echo "$DOCKER_PASSWORD" | docker login \
-                            --username "$DOCKER_USERNAME" \
-                            --password-stdin
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    
+                        docker push ragavkumar/ragavapp:latest
+                    '''
+                }
+            }
+        }
+	 stage('Docker Login') {
 
-                        echo "Docker Hub login successful."
+            steps {
 
-                        echo ""
-                        echo "=========================================="
-                        echo "DOCKER PUSH"
-                        echo "=========================================="
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-cred',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
 
-                        echo "Pushing image:"
-                        echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                    sh '''
 
-                        docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                        echo ""
-                        echo "Docker push completed successfully."
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    
+                        docker run -d --name ragavapp1 -p 8081:80 ragavkumar/ragavapp:latest
                     '''
                 }
             }
         }
 
-        stage('Docker Check') {
-
-            steps {
-
-                sh 'docker run -d --name ragavprojectbank -p 8081:80 ragavkumar/ragavapp:latest'
-            }
-        }
-
-        // =====================================================
-        // 13. DOCKER LOGOUT
-        // =====================================================
 
         stage('Docker Logout') {
 
@@ -398,3 +368,6 @@ pipeline {
         }
     }
 }
+
+
+ragavkumar/ragavapp:latest
