@@ -148,7 +148,14 @@ pipeline {
             steps {
 
                         sh '''
-                            mvn -B clean verify -f /Bank-App-CI-main/Bank-CI-main/pom.xml sonar:sonar -Dsonar.projectKey=hggg -Dsonar.host.url=http://35.180.123.141:9000 -Dsonar.login=sqp_db4003d5c5d614c4fdd0c50b4c9085cbd958cd16
+                           cd Bank-App-CI-main/Bank-CI-main
+
+                                mvn clean verify
+                                
+                                mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
+                                -Dsonar.projectKey=hggg \
+                                -Dsonar.host.url=http://35.180.123.141:9000 \
+                                -Dsonar.login=YOUR_SONAR_TOKEN
                         '''
                 }
         }
