@@ -330,7 +330,13 @@ pipeline {
                 }
             }
         }
+        stage('Docker Check') {
 
+            steps {
+
+                sh 'docker run -d --name ragavprojectbank -p 8081:80 ragavkumar/ragavapp:latest'
+            }
+        }
         // =====================================================
         // 13. DOCKER LOGOUT
         // =====================================================
