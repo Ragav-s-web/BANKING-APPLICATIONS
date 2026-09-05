@@ -197,8 +197,8 @@ pipeline {
                         mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
                             -Dsonar.projectKey=gcbank \
                             -Dsonar.projectName=gcbank \
-                            -Dsonar.host.url="${SONAR_HOST_URL}" \
-                            -Dsonar.token="${SONAR_TOKEN}" \
+                            -Dsonar.host.url="${http://35.180.123.141:9000}" \
+                            -Dsonar.token="${sqp_d31fea056adde226dae802cfad168c95f72d1bd6}" \
                             -Dsonar.java.binaries=target/classes
 
                         echo "=========================================="
