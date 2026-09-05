@@ -256,36 +256,6 @@ pipeline {
             }
         }
 
-        // =====================================================
-        // 11. DOCKER IMAGE CHECK / TAG
-        // =====================================================
-
-        stage('Docker Image Check') {
-
-            steps {
-
-                sh '''
-                    echo "=========================================="
-                    echo "DOCKER IMAGE CHECK"
-                    echo "=========================================="
-
-                    docker images
-
-                    echo ""
-                    echo "Tagging Docker image..."
-
-                    docker tag ragavapp "${DOCKER_IMAGE}:${IMAGE_TAG}"
-
-                    echo ""
-                    echo "Tagged image:"
-                    echo "${DOCKER_IMAGE}:${IMAGE_TAG}"
-                '''
-            }
-        }
-
-        // =====================================================
-        // 12. DOCKER LOGIN AND PUSH
-        // =====================================================
 
         stage('Docker Login') {
 
