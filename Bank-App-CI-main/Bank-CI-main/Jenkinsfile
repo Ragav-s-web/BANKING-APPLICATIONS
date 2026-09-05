@@ -181,7 +181,7 @@ pipeline {
 
                     withSonarQubeEnv('sonar') {
 
-                        withCredentials([ usernamePassword: 'sonarqube-token',usernameVariable: 'SONAR_USER', passwordVariable: 'SONAR_TOKEN')]) {
+                        withCredentials([ usernamePassword: 'sonarqube-token',usernameVariable: 'SONAR_USER', passwordVariable: 'SONAR_TOKEN']) {
 
                             echo "SONAR CREDENTIAL BLOCK STARTED"
 
