@@ -182,7 +182,7 @@ pipeline {
 
                         withCredentials([
                             string(
-                                credentialsId: 'sonar-token',
+                                credentialsId: 'sqp_d31fea056adde226dae802cfad168c95f72d1bd6',
                                 variable: 'SONAR_TOKEN'
                             )
                         ]) {
